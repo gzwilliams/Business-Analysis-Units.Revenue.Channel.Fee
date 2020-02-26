@@ -1,11 +1,17 @@
-ChannelFee <- function(client, account = " ",display_data,direc,year){
+ChannelFeeTypeBreakdown <- function(course,facility = " ",display_data,direc,year){
 
 ##FOR SCRIPT TESTING PURPOSES 
-client="Client Name";account = " ";display_data=1;year="2019"
+course="1757 Golf Club";facility = " ";display_data=1;year="2019"
 ## FOR TESTING ^^^^^^^^
   
-setwd("Y:/ChannelFeeProject/")  
+## not needed? ## setwd("W:/Analytics/Packages/Channel Fee Type Breakdown")  
+## For when it's complete-BELOW## 
+#setwd("/srv/shiny-server/Analytics/Packages/Channel Fee Type Breakdown")
+setwd("/srv/shiny-server/BetaGerhard/")
 
+###Testing script
+setwd("w:/BetaGerhard/")  
+## Testing ^^^^
   
 library(ggplot2)
 library(ggiraph)
@@ -17,38 +23,49 @@ library(dplyr)
 library(xlsx)
 library(htmlwidgets)
 
-#### FILTER DATA BY YEAR ###### 
-SQLData <- read.csv(paste0("BreakDownAllclients",year,".csv"),stringsAsFactors = FALSE)
+#### FILTER DATA BY YEAR ###### no need to break the years up - jk only select by each year
+SQLData <- read.csv(paste0("BreakDownAllCourses",year,".csv"),stringsAsFactors = FALSE)
+
+#### Must break Years into 2 Files and the combine into 1 Dataframe
+#Part 1 is from 1/1 to 3/31
+#SQLData1 <- read.csv(paste0("BreakDownAllCourses",year,"Part1.csv"),stringsAsFactors = FALSE)
+#Part 2 is from 4/1 to 6/31
+#SQLData2 <- read.csv(paste0("BreakDownAllCourses",year,"Part2.csv"),stringsAsFactors = FALSE)
+#Part 3 is from 7/1 to 9/31
+#SQLData3 <- read.csv(paste0("BreakDownAllCourses",year,"Part3.csv"),stringsAsFactors = FALSE)
+#Part 4 is from 10/1 to 12/31
+#SQLData4 <- read.csv(paste0("BreakDownAllCourses",year,"Part4.csv"),stringsAsFactors = FALSE)
+
+#SQLData <- rbind(SQLData1, SQLData2, SQLData3, SQLData4)
+
+colnames(SQLData)[1] <- "Course"
+
+##SQLData <- read.csv('BreakDownAllCourses2018.csv')
+
+## Remove the quotation marks from course & facility name #
+SQLData$Course <- gsub("\"", "", SQLData$Course)
+SQLData$Facility <- gsub("\"", "", SQLData$Facility)
+
+#### FILTER BY COURSE ####
+
+SQLData = SQLData[which(SQLData$Course %in% course),]
 
 
-## ensure 1st column has correct name
-colnames(SQLData)[1] <- "client"
-
-
-## Remove the quotation marks from client & account name #
-SQLData$client <- gsub("\"", "", SQLData$client)
-SQLData$account <- gsub("\"", "", SQLData$account)
-
-#### FILTER BY client ####
-
-SQLData = SQLData[which(SQLData$client %in% client),]
-
-
-##would have to change SQLData$client to SQLData$account to get everything to work
-if(account != " "){
-  SQLData = SQLData[which(SQLData$account == account),]
+##would have to change SQLData$Course to SQLData$Facility to get everything to work
+if(facility != " "){
+  SQLData = SQLData[which(SQLData$Facility == facility),]
 }
-#else SQLData$account = NA
+#else SQLData$Facility = NA
 
-#### IF SQLData SELECTED client HAS ZERO rows - then put up warning message ####
+#### IF SQLData SELECTED COURSE HAS ZERO rows - then put up warning message ####
 if(nrow(SQLData) < 1){
     nullplot = ggplot(SQLData) + geom_blank()
     return(list(nullplot,nullplot,nullplot,nullplot,nullplot,nullplot,nullplot,nullplot,nullplot, nullplot, nullplot, nullplot,"NOT ENOUGH DATA"))
   }
 
 
-##Make units column into factor
-#SQLData$units = as.factor(SQLData$units)
+##Make Rounds column into factor
+#SQLData$Rounds = as.factor(SQLData$Rounds)
 ##Make TeeTimeHM into time
 SQLData$TeeTimeHM = as.POSIXct(SQLData$TeeTimeHM,format="%H:%M:%S")
 ##Make Total.Fees numeric
@@ -58,44 +75,44 @@ SQLData$HoursBookedBeforeTT <- as.numeric(SQLData$HoursBookedBeforeTT, na.rm=TRU
 
 ## OR SQLData <- read.csv('TestChannelFeeDateTime.csv', stringsAsFactors = FALSE)
 #### Total Sort by Booking Channel ####
-shop.units.vec <- (SQLData[SQLData$Channel=="Shop",])
-res.center.units.vec <- (SQLData[SQLData$Channel=="Res Center",])
-TPY.units.vec <- (SQLData[SQLData$Channel=="TPY",])
-web.units.vec <- (SQLData[SQLData$Channel=="Website",])
+shop.rounds.vec <- (SQLData[SQLData$Channel=="Shop",])
+res.center.rounds.vec <- (SQLData[SQLData$Channel=="Res Center",])
+TPY.rounds.vec <- (SQLData[SQLData$Channel=="TPY",])
+web.rounds.vec <- (SQLData[SQLData$Channel=="Website",])
 
 #### Weekday Sort by Booking Channel #####
-weekday.units.vec <- (SQLData[SQLData$DayType=="Weekday",])
-weekday.shop.units.vec <- (weekday.units.vec[weekday.units.vec$Channel=="Shop",])
-weekday.res.center.units.vec <- (weekday.units.vec[weekday.units.vec$Channel=="Res Center",])
-weekday.TPY.units.vec <- (weekday.units.vec[weekday.units.vec$Channel=="TPY",])
-weekday.web.units.vec <- (weekday.units.vec[weekday.units.vec$Channel=="Website",])
+weekday.rounds.vec <- (SQLData[SQLData$DayType=="Weekday",])
+weekday.shop.rounds.vec <- (weekday.rounds.vec[weekday.rounds.vec$Channel=="Shop",])
+weekday.res.center.rounds.vec <- (weekday.rounds.vec[weekday.rounds.vec$Channel=="Res Center",])
+weekday.TPY.rounds.vec <- (weekday.rounds.vec[weekday.rounds.vec$Channel=="TPY",])
+weekday.web.rounds.vec <- (weekday.rounds.vec[weekday.rounds.vec$Channel=="Website",])
 
 #### Weekend Sort by Booking Channel ########
-weekend.units.vec <- (SQLData[SQLData$DayType=="Weekend",])
-weekend.shop.units.vec <- (weekend.units.vec[weekend.units.vec$Channel=="Shop",])
-weekend.res.center.units.vec <- (weekend.units.vec[weekend.units.vec$Channel=="Res Center",])
-weekend.TPY.units.vec <- (weekend.units.vec[weekend.units.vec$Channel=="TPY",])
-weekend.web.units.vec <- (weekend.units.vec[weekend.units.vec$Channel=="Website",])
+weekend.rounds.vec <- (SQLData[SQLData$DayType=="Weekend",])
+weekend.shop.rounds.vec <- (weekend.rounds.vec[weekend.rounds.vec$Channel=="Shop",])
+weekend.res.center.rounds.vec <- (weekend.rounds.vec[weekend.rounds.vec$Channel=="Res Center",])
+weekend.TPY.rounds.vec <- (weekend.rounds.vec[weekend.rounds.vec$Channel=="TPY",])
+weekend.web.rounds.vec <- (weekend.rounds.vec[weekend.rounds.vec$Channel=="Website",])
 
 ##### IF NOT ENOUGH DATA - STOP #####
-# if(nrow(c(SQLData, shop.units.vec, res.center.units.vec, TPY.units.vec, website.units.vec)) == 0){
+# if(nrow(c(SQLData, shop.rounds.vec, res.center.rounds.vec, TPY.rounds.vec, website.rounds.vec)) == 0){
 #   nullplot = plotly_empty()
 #   return(list(nullplot,nullplot,nullplot,nullplot,nullplot,nullplot,nullplot,nullplot,nullplot, nullplot, nullplot, nullplot,"NOT ENOUGH DATA"))
 # }
 # 
-# vectorcheck <- c(shop.units.vec, res.center.units.vec, TPY.units.vec, website.units.vec)
+# vectorcheck <- c(shop.rounds.vec, res.center.rounds.vec, TPY.rounds.vec, website.rounds.vec)
 # 
 # for(i in vectorcheck){
-#   if(nrow(c(SQLData, shop.units.vec, res.center.units.vec, TPY.units.vec, website.units.vec)) == 0){
+#   if(nrow(c(SQLData, shop.rounds.vec, res.center.rounds.vec, TPY.rounds.vec, website.rounds.vec)) == 0){
 #     nullplot = plotly_empty()
 #     return(list(nullplot,nullplot,nullplot,nullplot,nullplot,nullplot,nullplot,nullplot,nullplot, nullplot, nullplot, nullplot,"NOT ENOUGH DATA"))
 #   }
 # }
 #### Empty nrow Vec fill in for each Channel ####
 
-EmptyDFs<- data.frame(client = rep(as.character(client),1),
+EmptyDFs<- data.frame(Course = rep(as.character(course),1),
                      Channel = rep(as.character("Shop"),1),
-                     account = rep(as.character(account),1),
+                     Facility = rep(as.character(facility),1),
                      FeeType = rep(as.character("Comp"),1),
                      Year = rep(as.integer(year),1),
                      Month = rep(as.integer(1),1),
@@ -105,14 +122,14 @@ EmptyDFs<- data.frame(client = rep(as.character(client),1),
                      TTHour = rep(as.integer(12),1),
                      HoursBookedBeforeTT = rep(as.integer(0),1),
                      DayType = rep(as.character("Weekday"),1),
-                     units = rep(as.numeric(0),1),
+                     Rounds = rep(as.numeric(0),1),
                      Total.Fees = rep(as.numeric(0),1),
                      stringsAsFactors = FALSE
                      )
 
-EmptyDFr<- data.frame(client = rep(as.character(client),1),
+EmptyDFr<- data.frame(Course = rep(as.character(course),1),
                      Channel = rep(as.character("Res Center"),1),
-                     account = rep(as.character(account),1),
+                     Facility = rep(as.character(facility),1),
                      FeeType = rep(as.character("Comp"),1),
                      Year = rep(as.integer(year),1),
                      Month = rep(as.integer(1),1),
@@ -122,14 +139,14 @@ EmptyDFr<- data.frame(client = rep(as.character(client),1),
                      TTHour = rep(as.integer(12),1),
                      HoursBookedBeforeTT = rep(as.integer(0),1),
                      DayType = rep(as.character("Weekday"),1),
-                     units = rep(as.numeric(0),1),
+                     Rounds = rep(as.numeric(0),1),
                      Total.Fees = rep(as.numeric(0),1),
                      stringsAsFactors = FALSE
                      )
 
-EmptyDFt<- data.frame(client = rep(as.character(client),1),
+EmptyDFt<- data.frame(Course = rep(as.character(course),1),
                       Channel = rep(as.character("TPY"),1),
-                      account = rep(as.character(account),1),
+                      Facility = rep(as.character(facility),1),
                       FeeType = rep(as.character("Comp"),1),
                       Year = rep(as.integer(year),1),
                       Month = rep(as.integer(1),1),
@@ -139,14 +156,14 @@ EmptyDFt<- data.frame(client = rep(as.character(client),1),
                       TTHour = rep(as.integer(12),1),
                       HoursBookedBeforeTT = rep(as.integer(0),1),
                       DayType = rep(as.character("Weekday"),1),
-                      units = rep(as.numeric(0),1),
+                      Rounds = rep(as.numeric(0),1),
                       Total.Fees = rep(as.numeric(0),1),
                       stringsAsFactors = FALSE
                       )
 
-EmptyDFw<- data.frame(client = rep(as.character(client),1),
+EmptyDFw<- data.frame(Course = rep(as.character(course),1),
                       Channel = rep(as.character("Website"),1),
-                      account = rep(as.character(account),1),
+                      Facility = rep(as.character(facility),1),
                       FeeType = rep(as.character("Comp"),1),
                       Year = rep(as.integer(year),1),
                       Month = rep(as.integer(1),1),
@@ -156,122 +173,122 @@ EmptyDFw<- data.frame(client = rep(as.character(client),1),
                       TTHour = rep(as.integer(12),1),
                       HoursBookedBeforeTT = rep(as.integer(0),1),
                       DayType = rep(as.character("Weekday"),1),
-                      units = rep(as.numeric(0),1),
+                      Rounds = rep(as.numeric(0),1),
                       Total.Fees = rep(as.numeric(0),1),
                       stringsAsFactors = FALSE
                       )
   
-## Need to include account as part of file download name, but only when necessary 
+## Need to include Facility as part of file download name, but only when necessary 
 
 
-############Aggregate by units & Revenue (Sum) TOTAL ################
+############Aggregate by Rounds & Revenue (Sum) TOTAL ################
 
-if(nrow(shop.units.vec) > 0){
-  shop.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,shop.units.vec,FUN=sum)
+if(nrow(shop.rounds.vec) > 0){
+  shop.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,shop.rounds.vec,FUN=sum)
 }else{
-  shop.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,EmptyDFs,FUN=sum)
+  shop.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,EmptyDFs,FUN=sum)
 }
 
 
-if(nrow(TPY.units.vec) > 0){
-  TPY.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,TPY.units.vec,FUN=sum)
+if(nrow(TPY.rounds.vec) > 0){
+  TPY.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,TPY.rounds.vec,FUN=sum)
 }else{
-  TPY.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,EmptyDFt,FUN=sum)
+  TPY.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,EmptyDFt,FUN=sum)
 }
 
 
-if(nrow(web.units.vec) > 0){
-  web.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,web.units.vec,FUN=sum)
+if(nrow(web.rounds.vec) > 0){
+  web.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,web.rounds.vec,FUN=sum)
 }else{
-  web.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,EmptyDFw,FUN=sum)
+  web.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,EmptyDFw,FUN=sum)
 }
 
 
 
-if(nrow(res.center.units.vec) > 0){
-  res.center.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,res.center.units.vec,FUN=sum)
+if(nrow(res.center.rounds.vec) > 0){
+  res.center.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,res.center.rounds.vec,FUN=sum)
 }else{
-  res.center.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,EmptyDFr,FUN=sum)
+  res.center.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,EmptyDFr,FUN=sum)
 }
 
 
-##### Aggregate by units & Revenue (Sum) WEEKDAY ######    Aggregate by units & Revenue (Sum) WEEKDAY ######
-if(nrow(weekday.shop.units.vec) > 0){
-  weekday.shop.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,weekday.shop.units.vec,FUN=sum)
+##### Aggregate by Rounds & Revenue (Sum) WEEKDAY ######    Aggregate by Rounds & Revenue (Sum) WEEKDAY ######
+if(nrow(weekday.shop.rounds.vec) > 0){
+  weekday.shop.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,weekday.shop.rounds.vec,FUN=sum)
 }else{
-  weekday.shop.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,EmptyDFs,FUN=sum)
+  weekday.shop.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,EmptyDFs,FUN=sum)
 }
 
 
-if(nrow(weekday.TPY.units.vec) > 0){
-  weekday.TPY.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,weekday.TPY.units.vec,FUN=sum)
+if(nrow(weekday.TPY.rounds.vec) > 0){
+  weekday.TPY.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,weekday.TPY.rounds.vec,FUN=sum)
 }else{
-  weekday.TPY.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,EmptyDFt,FUN=sum)
+  weekday.TPY.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,EmptyDFt,FUN=sum)
 }
 
 
-if(nrow(weekday.web.units.vec) > 0){
-  weekday.web.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,weekday.web.units.vec,FUN=sum)
+if(nrow(weekday.web.rounds.vec) > 0){
+  weekday.web.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,weekday.web.rounds.vec,FUN=sum)
 }else{
-  weekday.web.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,EmptyDFw,FUN=sum)
+  weekday.web.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,EmptyDFw,FUN=sum)
 }
 
 
-if(nrow(weekday.res.center.units.vec) > 0){
-  weekday.res.center.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,weekday.res.center.units.vec,FUN=sum)
+if(nrow(weekday.res.center.rounds.vec) > 0){
+  weekday.res.center.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,weekday.res.center.rounds.vec,FUN=sum)
 }else{
-  weekday.res.center.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,EmptyDFr,FUN=sum)
+  weekday.res.center.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,EmptyDFr,FUN=sum)
 }
 
 
-##### Aggregate by units & Revenue (Sum) WEEKEND ######    Aggregate by units & Revenue (Sum) WEEKEND ######
-if(nrow(weekend.shop.units.vec) > 0){
-  weekend.shop.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,weekend.shop.units.vec,FUN=sum)
+##### Aggregate by Rounds & Revenue (Sum) WEEKEND ######    Aggregate by Rounds & Revenue (Sum) WEEKEND ######
+if(nrow(weekend.shop.rounds.vec) > 0){
+  weekend.shop.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,weekend.shop.rounds.vec,FUN=sum)
 }else{
-  weekend.shop.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,EmptyDFs,FUN=sum)
+  weekend.shop.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,EmptyDFs,FUN=sum)
 }
 
 
-if(nrow(weekend.TPY.units.vec) > 0){
-  weekend.TPY.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,weekend.TPY.units.vec,FUN=sum)
+if(nrow(weekend.TPY.rounds.vec) > 0){
+  weekend.TPY.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,weekend.TPY.rounds.vec,FUN=sum)
 }else{
-  weekend.TPY.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,EmptyDFt,FUN=sum)
+  weekend.TPY.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,EmptyDFt,FUN=sum)
 }
 
 
-if(nrow(weekend.web.units.vec) > 0){
-  weekend.web.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,weekend.web.units.vec,FUN=sum)
+if(nrow(weekend.web.rounds.vec) > 0){
+  weekend.web.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,weekend.web.rounds.vec,FUN=sum)
 }else{
-  weekend.web.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,EmptyDFw,FUN=sum)
+  weekend.web.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,EmptyDFw,FUN=sum)
 }
 
 
-if(nrow(weekend.res.center.units.vec) > 0){
-  weekend.res.center.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,weekend.res.center.units.vec,FUN=sum)
+if(nrow(weekend.res.center.rounds.vec) > 0){
+  weekend.res.center.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,weekend.res.center.rounds.vec,FUN=sum)
 }else{
-  weekend.res.center.units.FeeTypeSum.vec = aggregate(cbind(units, Total.Fees)~client+Channel+Year+MonthName+FeeType,EmptyDFr,FUN=sum)
+  weekend.res.center.rounds.FeeTypeSum.vec = aggregate(cbind(Rounds, Total.Fees)~Course+Channel+Year+MonthName+FeeType,EmptyDFr,FUN=sum)
 }
 
 
 
 
 ##### TOTAL graph Dataframe #############
-totaldf <- rbind.data.frame(shop.units.FeeTypeSum.vec, 
-                            res.center.units.FeeTypeSum.vec, 
-                            TPY.units.FeeTypeSum.vec,
-                            web.units.FeeTypeSum.vec)
+totaldf <- rbind.data.frame(shop.rounds.FeeTypeSum.vec, 
+                            res.center.rounds.FeeTypeSum.vec, 
+                            TPY.rounds.FeeTypeSum.vec,
+                            web.rounds.FeeTypeSum.vec)
 
 #### WEEKDAY graph Dataframe ########## - graphs not included 
-weekdaydf <- rbind.data.frame(weekday.shop.units.FeeTypeSum.vec, 
-                              weekday.res.center.units.FeeTypeSum.vec, 
-                              weekday.TPY.units.FeeTypeSum.vec,
-                              weekday.web.units.FeeTypeSum.vec)
+weekdaydf <- rbind.data.frame(weekday.shop.rounds.FeeTypeSum.vec, 
+                              weekday.res.center.rounds.FeeTypeSum.vec, 
+                              weekday.TPY.rounds.FeeTypeSum.vec,
+                              weekday.web.rounds.FeeTypeSum.vec)
 
 ##### WEEKEND graph dataframe ####### - graphs not included
-weekenddf <- rbind.data.frame(weekend.shop.units.FeeTypeSum.vec, 
-                              weekend.res.center.units.FeeTypeSum.vec, 
-                              weekend.TPY.units.FeeTypeSum.vec,
-                              weekend.web.units.FeeTypeSum.vec)
+weekenddf <- rbind.data.frame(weekend.shop.rounds.FeeTypeSum.vec, 
+                              weekend.res.center.rounds.FeeTypeSum.vec, 
+                              weekend.TPY.rounds.FeeTypeSum.vec,
+                              weekend.web.rounds.FeeTypeSum.vec)
 
 
 ################ ######################################
@@ -280,25 +297,32 @@ weekenddf <- rbind.data.frame(weekend.shop.units.FeeTypeSum.vec,
 #Create tooltip css for mouse hover info (ggiraph)
 tooltip_css <- "background-color:gray;color:white;font-style:italic;padding:10px;border-radius:10px 20px 10px 20px;font-family:Trebuchet MS"
 #create the tooltip #
-totaldf$tooltipunits = paste0("Units Sold: ", formatC(totaldf$units, format="d", big.mark=","), "<br/>",
+totaldf$tooltiprounds = paste0("Units Sold: ", formatC(totaldf$Rounds, format="d", big.mark=","), "<br/>",
                                "Fee Type: ", totaldf$FeeType)
 
 #orders the months chronologically
 totaldf$MonthName <- factor(totaldf$MonthName, levels = month.name)
 
-##### Pic Entered As Background Image - must add to ggplot before the geom_lines #####
+##### Logo Entered As Background Image - must add to ggplot before the geom_lines #####
+# require("pacman")
+# library(pacman)
+# require("grid")
+# library(grid)
+# require("png")
+# library(png)
+# library(magick)
 
-image3 <- jpeg::readJPEG("numbers2.jpg") ## img must be located in working directory/folder
+image3 <- jpeg::readJPEG("numbers2.jpg")
 
 imagex <- rasterGrob(image3, width = unit(1, "npc"), height = unit(1, "npc"))
 
 ###### START OF BLOCK GGIRAPH PLOTS ######
-####### INTERACTIVE TOTAL units graph ########
+####### INTERACTIVE TOTAL Rounds graph ########
 
-jrototal2 <- ggplot(totaldf, aes(x=MonthName, y=units, group=FeeType, color=FeeType)) +
+jrototal2 <- ggplot(totaldf, aes(x=MonthName, y=Rounds, group=FeeType, color=FeeType)) +
   annotation_custom(imagex) +
   geom_line() +
-  geom_point_interactive(aes(tooltip=tooltipunits, data_id=units)) +
+  geom_point_interactive(aes(tooltip=tooltiprounds, data_id=Rounds)) +
   facet_wrap(~Channel)+
   scale_y_continuous(labels=scales::comma, limits = c(0,NA))+
   #ylim(0,NA) +
@@ -311,11 +335,13 @@ krototal2 <- jrototal2 + theme(legend.position="bottom",legend.title=element_bla
 
 #ggiraph(code = print(krototal2), hover_css = "cursor:pointer;fill:red;r:8pt;")
 
-CFTD.total.units.graph <- ggiraph(code = print(krototal2), selection_type ="none", tooltip_extra_css = tooltip_css, hover_css = "cursor:pointer;fill:red;r:2pt;")
+CFTD.total.rounds.graph <- ggiraph(code = print(krototal2), selection_type ="none", tooltip_extra_css = tooltip_css, hover_css = "cursor:pointer;fill:red;r:2pt;")
 
-htmlwidgets::saveWidget(CFTD.total.units.graph, "cftdunits_lineplot2.html", selfcontained = TRUE, libdir = NULL)
+htmlwidgets::saveWidget(CFTD.total.rounds.graph, "cftdunits_lineplot2.html", selfcontained = TRUE, libdir = NULL)
 
 ##### INTERACTIVE TOTAL REVENUE graph #########
+
+#library(scales)
 
 
 #create the tooltip # #tooltips need to have formatC in order to include commas
@@ -327,7 +353,7 @@ totaldf$MonthName <- factor(totaldf$MonthName, levels = month.name)
 jrevtotal2 <- ggplot(totaldf, aes(x=MonthName, y=Total.Fees, group=FeeType, color=FeeType)) +
   annotation_custom(imagex) +
   geom_line() +
-  geom_point_interactive(aes(tooltip=tooltiprevenue, data_id=units)) +
+  geom_point_interactive(aes(tooltip=tooltiprevenue, data_id=Rounds)) +
   facet_wrap(~Channel) + scale_y_continuous(labels=scales::dollar, limits = c(0,NA)) + theme(text=element_text(family="Trebuchet MS", face="bold",size=10))  #theme_classic() ##+ scale_y_continuous(label=dollar_format())
 
 
@@ -342,19 +368,19 @@ CFTD.total.revenue.graph <- ggiraph(code = print(krevtotal2), selection_type ="n
 htmlwidgets::saveWidget(CFTD.total.revenue.graph, "cftdrevenue_lineplot2.html", selfcontained = TRUE, libdir = NULL)
 
 
-####### INTERACTIVE WEEKDAY units graph ########
+####### INTERACTIVE WEEKDAY ROUNDS graph ########
 
 #create the tooltip #
-weekdaydf$tooltipunits = paste0("units: ", formatC(weekdaydf$units, format="d", big.mark=","), "<br/>",
+weekdaydf$tooltiprounds = paste0("Rounds: ", formatC(weekdaydf$Rounds, format="d", big.mark=","), "<br/>",
                                  "Fee Type: ", weekdaydf$FeeType)
 
 # ##arrange months chronologically #
 weekdaydf$MonthName <- factor(weekdaydf$MonthName, levels = month.name)
 
-jroweekday2 <- ggplot(weekdaydf, aes(x=MonthName, y=units, group=FeeType, color=FeeType)) +
+jroweekday2 <- ggplot(weekdaydf, aes(x=MonthName, y=Rounds, group=FeeType, color=FeeType)) +
   annotation_custom(imagex) +
   geom_line() +
-  geom_point_interactive(aes(tooltip=tooltipunits, data_id=units)) +
+  geom_point_interactive(aes(tooltip=tooltiprounds, data_id=Rounds)) +
   facet_wrap(~Channel)+
   scale_y_continuous(labels=scales::comma, limits = c(0,NA))+
   #ylim(0,NA) + theme_classic()
@@ -364,11 +390,11 @@ jroweekday2 <- ggplot(weekdaydf, aes(x=MonthName, y=units, group=FeeType, color=
 
 kroweekday2 <- jroweekday2 + theme(legend.position="bottom",legend.title=element_blank(),
                                    plot.title = element_text(hjust = 0.5, size=12), axis.text.x = element_text(angle=90, vjust=.5, size=10), axis.text.y=element_text(size=10)) +
-  ylab("units") + xlab("Month") + ggtitle(paste(weekdaydf$client, ":", weekdaydf$Year, " Weekday units by Channel/Fee Type"))
+  ylab("Rounds") + xlab("Month") + ggtitle(paste(weekdaydf$Course, ":", weekdaydf$Year, " Weekday Rounds by Channel/Fee Type"))
 
 #ggiraph(code = print(kroweekday2), hover_css = "cursor:pointer;fill:red;r:8pt;")
 
-CFTD.weekday.units.graph <- ggiraph(code = print(kroweekday2), selection_type ="none", tooltip_extra_css = tooltip_css, hover_css = "cursor:pointer;fill:red;r:1pt;")
+CFTD.weekday.rounds.graph <- ggiraph(code = print(kroweekday2), selection_type ="none", tooltip_extra_css = tooltip_css, hover_css = "cursor:pointer;fill:red;r:1pt;")
 
 ##### INTERACTIVE WEEKDAY REVENUE graph ##########
 
@@ -391,7 +417,7 @@ jrevweekday2 <- ggplot(weekdaydf, aes(x=MonthName, y=Total.Fees, group=FeeType, 
 
 krevweekday2 <- jrevweekday2 + theme(legend.position="bottom",legend.title=element_blank(),
                                      plot.title = element_text(hjust = 0.5, size=12), axis.text.x = element_text(angle=90, vjust=.5, size=10), axis.text.y=element_text(size=10)) +
-  ylab("Revenue") + xlab("Month") + ggtitle(paste(weekdaydf$client, ":", weekdaydf$Year, "Weekday Revenue by Channel/Fee Type"))
+  ylab("Revenue") + xlab("Month") + ggtitle(paste(weekdaydf$Course, ":", weekdaydf$Year, "Weekday Revenue by Channel/Fee Type"))
 
 #ggiraph(code = print(krevweekday2), hover_css = "cursor:pointer;fill:red;r:8pt;")
 
@@ -399,19 +425,19 @@ CFTD.weekday.revenue.graph <- ggiraph(code = print(krevweekday2), selection_type
 
 
 
-####### INTERACTIVE WEEKEND units graph ########
+####### INTERACTIVE WEEKEND ROUNDS graph ########
 
 #create the tooltip #
-weekenddf$tooltipunits = paste0("units: ", formatC(weekenddf$units, format="d", big.mark=","), "<br/>",
+weekenddf$tooltiprounds = paste0("Rounds: ", formatC(weekenddf$Rounds, format="d", big.mark=","), "<br/>",
                                  "Fee Type: ", weekenddf$FeeType)
 
 ##arrange months chronologically #
 weekenddf$MonthName <- factor(weekenddf$MonthName, levels = month.name)
 
-jroweekend2 <- ggplot(weekenddf, aes(x=MonthName, y=units, group=FeeType, color=FeeType)) +
+jroweekend2 <- ggplot(weekenddf, aes(x=MonthName, y=Rounds, group=FeeType, color=FeeType)) +
   annotation_custom(imagex) +
   geom_line() +
-  geom_point_interactive(aes(tooltip=tooltipunits, data_id=units)) +
+  geom_point_interactive(aes(tooltip=tooltiprounds, data_id=Rounds)) +
   facet_wrap(~Channel)+
   scale_y_continuous(labels=scales::comma, limits = c(0,NA))+
   #ylim(0,NA) + theme_classic()
@@ -421,11 +447,11 @@ jroweekend2 <- ggplot(weekenddf, aes(x=MonthName, y=units, group=FeeType, color=
 
 kroweekend2 <- jroweekend2 + theme(legend.position="bottom",legend.title=element_blank(),
                                    plot.title = element_text(hjust = 0.5, size=12), axis.text.x = element_text(angle=90, vjust=.5, size=10), axis.text.y=element_text(size=10)) +
-  ylab("units") + xlab("Month") + ggtitle(paste(weekenddf$client, ":", weekenddf$Year, "Weekend units by Channel/Fee Type"))
+  ylab("Rounds") + xlab("Month") + ggtitle(paste(weekenddf$Course, ":", weekenddf$Year, "Weekend Rounds by Channel/Fee Type"))
 
 #ggiraph(code = print(kroweekend2), hover_css = "cursor:pointer;fill:red;r:8pt;")
 
-CFTD.weekend.units.graph <- ggiraph(code = print(kroweekend2), selection_type ="none", tooltip_extra_css = tooltip_css, hover_css = "cursor:pointer;fill:red;r:1pt;")
+CFTD.weekend.rounds.graph <- ggiraph(code = print(kroweekend2), selection_type ="none", tooltip_extra_css = tooltip_css, hover_css = "cursor:pointer;fill:red;r:1pt;")
 
 
 #### INTERACTIVE WEEKEND REVENUE graph ####
@@ -450,7 +476,7 @@ jrevweekend2 <- ggplot(weekenddf, aes(x=MonthName, y=Total.Fees, group=FeeType, 
 
 krevweekend2 <- jrevweekend2 + theme(legend.position="bottom",legend.title=element_blank(),
                                      plot.title = element_text(hjust = 0.5, size=12), axis.text.x = element_text(angle=90, vjust=.5, size=10), axis.text.y=element_text(size=10)) +
-  ylab("Revenue") + xlab("Month") + ggtitle(paste(weekenddf$client, ":", weekenddf$Year, "Weekend Revenue by Channel/Fee Type"))
+  ylab("Revenue") + xlab("Month") + ggtitle(paste(weekenddf$Course, ":", weekenddf$Year, "Weekend Revenue by Channel/Fee Type"))
 
 #ggiraph(code = print(krevweekend2), hover_css = "cursor:pointer;fill:red;r:8pt;")
 
@@ -465,39 +491,39 @@ CFTD.weekend.revenue.graph <- ggiraph(code = print(krevweekend2), selection_type
 #   hues = seq(15, 375, length = n + 1)
 #   hcl(h = hues, l = 65, c = 100)[1:n]
 # }
-# n = length(unique(totunittable$Channel))
+# n = length(unique(totrndtable$Channel))
 # colschann = gg_color_hue(n)
 # 
-# names(colschann) = unique(totunittable$Channel)
+# names(colschann) = unique(totrndtable$Channel)
 # 
 # #FeeType Colors
 # gg_color_hue <- function(n) {
 #   hues = seq(10, 575, length = n + 1)
 #   hcl(h = hues, l = 95, c = 100)[1:n]
 # }
-# n = length(unique(totunittable$FeeType))
+# n = length(unique(totrndtable$FeeType))
 # colsfee = gg_color_hue(n)
 # 
-# names(colsfee) = unique(totunittable$FeeType)
+# names(colsfee) = unique(totrndtable$FeeType)
 
 
 ##### DATA TABLES BEGIN #####
 ##### TOTAL TABLES ####
-totunittable = spread(totaldf[,-which(colnames(totaldf) %in% c("client", "Year", "Total.Fees", "tooltipunits", "tooltiprevenue"))], MonthName, units)
-totrevtable = spread(totaldf[,-which(colnames(totaldf) %in% c("client","Year", "units", "tooltipunits", "tooltiprevenue"))], MonthName, Total.Fees)
+totrndtable = spread(totaldf[,-which(colnames(totaldf) %in% c("Course", "Year", "Total.Fees", "tooltiprounds", "tooltiprevenue"))], MonthName, Rounds)
+totrevtable = spread(totaldf[,-which(colnames(totaldf) %in% c("Course","Year", "Rounds", "tooltiprounds", "tooltiprevenue"))], MonthName, Total.Fees)
 
 ## fill in blanks with 0
-totunittable[which(is.na(totunittable),arr.ind = TRUE)] <- 0
+totrndtable[which(is.na(totrndtable),arr.ind = TRUE)] <- 0
 totrevtable[which(is.na(totrevtable),arr.ind = TRUE)] <- 0
 
-#### Add TOTAL column and row for Total unit & Rev ####
-totunittable <- totunittable %>% bind_rows(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
-totunittable <- cbind(totunittable, Total = rowSums(totunittable[,3:ncol(totunittable)]))
-#totunittable <- totunittable %>% bind_cols(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
+#### Add TOTAL column and row for Total Rnd & Rev ####
+totrndtable <- totrndtable %>% bind_rows(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
+totrndtable <- cbind(totrndtable, Total = rowSums(totrndtable[,3:ncol(totrndtable)]))
+#totrndtable <- totrndtable %>% bind_cols(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
 
 totrevtable <- totrevtable %>% bind_rows(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
 totrevtable <- cbind(totrevtable, Total = rowSums(totrevtable[,3:ncol(totrevtable)]))
-#totunittable <- totunittable %>% bind_cols(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
+#totrndtable <- totrndtable %>% bind_cols(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
 
 
 ##### COLORS for Channel Column in TABLES####
@@ -506,37 +532,37 @@ gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
-n = length(unique(totunittable$Channel))
+n = length(unique(totrndtable$Channel))
 colschann = gg_color_hue(n)
 
-names(colschann) = unique(totunittable$Channel)
+names(colschann) = unique(totrndtable$Channel)
 
 #FeeType Colors
 gg_color_hue <- function(n) {
   hues = seq(10, 575, length = n + 1)
   hcl(h = hues, l = 95, c = 100)[1:n]
 }
-n = length(unique(totunittable$FeeType))
+n = length(unique(totrndtable$FeeType))
 colsfee = gg_color_hue(n)
 
-names(colsfee) = unique(totunittable$FeeType)
+names(colsfee) = unique(totrndtable$FeeType)
 
 # Create DT Table
-totunittableDT <- datatable(totunittable, caption = htmltools::tags$caption(paste('client:',totaldf$client, totaldf$Year,'-','account:',SQLData$account,'Table: Total units')), filter = 'top',
+totrndtableDT <- datatable(totrndtable, caption = htmltools::tags$caption(paste('Client',totaldf$Year,'-','Table: Total Rounds')), filter = 'top',
                            extensions = 'Buttons', options = list(
                              dom = 'Bfrtip', 
-                             buttons = list('copy',list(extend='excel',filename=paste(client,year,'Table: Total units',Sys.Date()))), pageLength=nrow(totunittable)
+                             buttons = list('copy',list(extend='excel',filename=paste('Client Table: Total Rounds',Sys.Date()))), pageLength=nrow(totrndtable)
                            )) %>%
-  formatStyle('Channel', backgroundColor = styleEqual(unique(totunittable$Channel), colschann)
+  formatStyle('Channel', backgroundColor = styleEqual(unique(totrndtable$Channel), colschann)
               ,fontWeight = 'bold') %>%
-  formatStyle('FeeType', backgroundColor = styleEqual(unique(totunittable$FeeType), colsfee)
+  formatStyle('FeeType', backgroundColor = styleEqual(unique(totrndtable$FeeType), colsfee)
               ,fontWeight = 'bold') 
 
 
-totrevtableDT <- datatable(totrevtable, caption = htmltools::tags$caption(paste(totaldf$client, totaldf$Year,'-', 'account:', SQLData$account, 'Table: Total Revenue')), filter = 'top',
+totrevtableDT <- datatable(totrevtable, caption = htmltools::tags$caption(paste('Client', 'Table: Total Revenue')), filter = 'top',
                            extensions = 'Buttons', options = list(
                              dom = 'Bfrtip',
-                             buttons = list('copy', list(extend='excel', filename=paste(client,year,'Table: Total Revenue',Sys.Date()))), pageLength=nrow(totunittable)
+                             buttons = list('copy', list(extend='excel', filename=paste('Client Table: Total Revenue',Sys.Date()))), pageLength=nrow(totrndtable)
                            )) %>%
   formatStyle('Channel', backgroundColor = styleEqual(unique(totrevtable$Channel), colschann)
               ,fontWeight = 'bold') %>%
@@ -545,26 +571,26 @@ totrevtableDT <- datatable(totrevtable, caption = htmltools::tags$caption(paste(
   formatCurrency(3:15)
 
 #### create html widgets for tables ####
-htmlwidgets::saveWidget(totunittableDT, "cftdunits_table2.html", selfcontained = TRUE, libdir = NULL)
+htmlwidgets::saveWidget(totrndtableDT, "cftdunits_table2.html", selfcontained = TRUE, libdir = NULL)
 htmlwidgets::saveWidget(totrevtableDT, "cftdrevenue_table2.html", selfcontained = TRUE, libdir = NULL)
 
 
 
 ##### WEEKDAY TABLES #### - not displayed on website
-wkdyunittable = spread(weekdaydf[,-which(colnames(weekdaydf) %in% c("client", "Year", "Total.Fees", "tooltipunits", "tooltiprevenue"))], MonthName, units)
-wkdyrevtable = spread(weekdaydf[,-which(colnames(weekdaydf) %in% c("client","Year", "units", "tooltipunits", "tooltiprevenue"))], MonthName, Total.Fees)
+wkdyrndtable = spread(weekdaydf[,-which(colnames(weekdaydf) %in% c("Course", "Year", "Total.Fees", "tooltiprounds", "tooltiprevenue"))], MonthName, Rounds)
+wkdyrevtable = spread(weekdaydf[,-which(colnames(weekdaydf) %in% c("Course","Year", "Rounds", "tooltiprounds", "tooltiprevenue"))], MonthName, Total.Fees)
 
-wkdyunittable[which(is.na(wkdyunittable),arr.ind = TRUE)] <- 0
+wkdyrndtable[which(is.na(wkdyrndtable),arr.ind = TRUE)] <- 0
 wkdyrevtable[which(is.na(wkdyrevtable),arr.ind = TRUE)] <- 0
 
-#### Add TOTAL column and row for WEEKDAY unit & Rev ####
-wkdyunittable <- wkdyunittable %>% bind_rows(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
-wkdyunittable <- cbind(wkdyunittable, Total = rowSums(wkdyunittable[,3:ncol(wkdyunittable)]))
-#wkdyunittable <- wkdyunittable %>% bind_cols(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
+#### Add TOTAL column and row for WEEKDAY Rnd & Rev ####
+wkdyrndtable <- wkdyrndtable %>% bind_rows(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
+wkdyrndtable <- cbind(wkdyrndtable, Total = rowSums(wkdyrndtable[,3:ncol(wkdyrndtable)]))
+#wkdyrndtable <- wkdyrndtable %>% bind_cols(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
 
 wkdyrevtable <- wkdyrevtable %>% bind_rows(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
 wkdyrevtable <- cbind(wkdyrevtable, Total = rowSums(wkdyrevtable[,3:ncol(wkdyrevtable)]))
-#totunittable <- totunittable %>% bind_cols(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
+#totrndtable <- totrndtable %>% bind_cols(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
 
 
 ##### COLORS for Channel Column in TABLES####
@@ -573,37 +599,37 @@ gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
-n = length(unique(wkdyunittable$Channel))
+n = length(unique(wkdyrndtable$Channel))
 colschann = gg_color_hue(n)
 
-names(colschann) = unique(wkdyunittable$Channel)
+names(colschann) = unique(wkdyrndtable$Channel)
 
 #FeeType Colors
 gg_color_hue <- function(n) {
   hues = seq(5, 375, length = n + 1)
   hcl(h = hues, l = 95, c = 100)[1:n]
 }
-n = length(unique(wkdyunittable$FeeType))
+n = length(unique(wkdyrndtable$FeeType))
 colsfee = gg_color_hue(n)
 
-names(colsfee) = unique(wkdyunittable$FeeType)
+names(colsfee) = unique(wkdyrndtable$FeeType)
 
-# Create DT Table for Weekday units
-wkdyunittableDT <- datatable(wkdyunittable, caption = htmltools::tags$caption(paste(totaldf$client, totaldf$Year,'-', 'account:', SQLData$account, 'Table: Weekday units')), filter = 'top',
+# Create DT Table for Weekday Rounds
+wkdyrndtableDT <- datatable(wkdyrndtable, caption = htmltools::tags$caption(paste(totaldf$Course, totaldf$Year,'-', 'Facility:', SQLData$Facility, 'Table: Weekday Rounds')), filter = 'top',
                             extensions = 'Buttons', options = list(
                               dom = 'Bfrtip',
-                              buttons = list('copy',list(extend='excel',filename=paste(client,year,'Table: Weekday units',Sys.Date()))), pageLength=nrow(wkdyunittable)
+                              buttons = list('copy',list(extend='excel',filename=paste(course,year,'Table: Weekday Rounds',Sys.Date()))), pageLength=nrow(wkdyrndtable)
                             )) %>%
-  formatStyle('Channel', backgroundColor = styleEqual(unique(wkdyunittable$Channel), 
+  formatStyle('Channel', backgroundColor = styleEqual(unique(wkdyrndtable$Channel), 
                                                       colschann),fontWeight = 'bold') %>%
-  formatStyle('FeeType', backgroundColor = styleEqual(unique(wkdyunittable$FeeType), 
+  formatStyle('FeeType', backgroundColor = styleEqual(unique(wkdyrndtable$FeeType), 
                                                       colsfee),fontWeight = 'bold')
 
 # Create DT Table for Weekday Revenue
-wkdyrevtableDT <- datatable(wkdyrevtable, caption = htmltools::tags$caption(paste(totaldf$client, totaldf$Year,'-', 'account:', SQLData$account, 'Table: Weekday Revenue')), filter = 'top',
+wkdyrevtableDT <- datatable(wkdyrevtable, caption = htmltools::tags$caption(paste(totaldf$Course, totaldf$Year,'-', 'Facility:', SQLData$Facility, 'Table: Weekday Revenue')), filter = 'top',
                             extensions = 'Buttons', options = list(
                               dom = 'Bfrtip',
-                              buttons = list('copy',list(extend='excel',filename=paste(client,year,'Table: Weekday Revenue',Sys.Date()))), pageLength=nrow(wkdyrevtable)
+                              buttons = list('copy',list(extend='excel',filename=paste(course,year,'Table: Weekday Revenue',Sys.Date()))), pageLength=nrow(wkdyrevtable)
                             )) %>%
   formatStyle('Channel', backgroundColor = styleEqual(unique(wkdyrevtable$Channel), colschann)
               ,fontWeight = 'bold') %>%
@@ -613,20 +639,20 @@ wkdyrevtableDT <- datatable(wkdyrevtable, caption = htmltools::tags$caption(past
 
 #### WEEKEND TABLES BEGIN #####
 ##### WEEKEND TABLES ####
-wkndunittable = spread(weekenddf[,-which(colnames(weekenddf) %in% c("client", "Year", "Total.Fees", "tooltipunits", "tooltiprevenue"))], MonthName, units)
-wkndrevtable = spread(weekenddf[,-which(colnames(weekenddf) %in% c("client","Year", "units", "tooltipunits", "tooltiprevenue"))], MonthName, Total.Fees)
+wkndrndtable = spread(weekenddf[,-which(colnames(weekenddf) %in% c("Course", "Year", "Total.Fees", "tooltiprounds", "tooltiprevenue"))], MonthName, Rounds)
+wkndrevtable = spread(weekenddf[,-which(colnames(weekenddf) %in% c("Course","Year", "Rounds", "tooltiprounds", "tooltiprevenue"))], MonthName, Total.Fees)
 
-wkndunittable[which(is.na(wkndunittable),arr.ind = TRUE)] <- 0
+wkndrndtable[which(is.na(wkndrndtable),arr.ind = TRUE)] <- 0
 wkndrevtable[which(is.na(wkndrevtable),arr.ind = TRUE)] <- 0
 
-#### Add TOTAL column and row for WEEKEND unit & Rev ####
-wkndunittable <- wkndunittable %>% bind_rows(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
-wkndunittable <- cbind(wkndunittable, Total = rowSums(wkndunittable[,3:ncol(wkndunittable)]))
-#wkdyunittable <- wkdyunittable %>% bind_cols(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
+#### Add TOTAL column and row for WEEKEND Rnd & Rev ####
+wkndrndtable <- wkndrndtable %>% bind_rows(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
+wkndrndtable <- cbind(wkndrndtable, Total = rowSums(wkndrndtable[,3:ncol(wkndrndtable)]))
+#wkdyrndtable <- wkdyrndtable %>% bind_cols(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
 
 wkndrevtable <- wkndrevtable %>% bind_rows(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
 wkndrevtable <- cbind(wkndrevtable, Total = rowSums(wkndrevtable[,3:ncol(wkndrevtable)]))
-#totunittable <- totunittable %>% bind_cols(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
+#totrndtable <- totrndtable %>% bind_cols(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total")))
 
 
 
@@ -636,38 +662,38 @@ gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
-n = length(unique(wkndunittable$Channel))
+n = length(unique(wkndrndtable$Channel))
 colschann = gg_color_hue(n)
 
-names(colschann) = unique(wkndunittable$Channel)
+names(colschann) = unique(wkndrndtable$Channel)
 
 #FeeType Colors
 gg_color_hue <- function(n) {
   hues = seq(5, 375, length = n + 1)
   hcl(h = hues, l = 95, c = 100)[1:n]
 }
-n = length(unique(wkndunittable$FeeType))
+n = length(unique(wkndrndtable$FeeType))
 colsfee = gg_color_hue(n)
 
-names(colsfee) = unique(wkndunittable$FeeType)
+names(colsfee) = unique(wkndrndtable$FeeType)
 
 
-# Create DT Table for Weekend units
-wkndunittableDT <- datatable(wkndunittable, caption = htmltools::tags$caption(paste(totaldf$client, totaldf$Year,'-', 'account:', SQLData$account, 'Table: Weekend units')), filter = 'top',
+# Create DT Table for Weekend Rounds
+wkndrndtableDT <- datatable(wkndrndtable, caption = htmltools::tags$caption(paste(totaldf$Course, totaldf$Year,'-', 'Facility:', SQLData$Facility, 'Table: Weekend Rounds')), filter = 'top',
                             extensions = 'Buttons', options = list(
                               dom = 'Bfrtip',
-                              buttons = list('copy',list(extend='excel',filename=paste(client,year,'Table: Weekend units',Sys.Date()))), pageLength=nrow(wkndunittable)
+                              buttons = list('copy',list(extend='excel',filename=paste(course,year,'Table: Weekend Rounds',Sys.Date()))), pageLength=nrow(wkndrndtable)
                             )) %>%
-  formatStyle('Channel', backgroundColor = styleEqual(unique(wkndunittable$Channel), 
+  formatStyle('Channel', backgroundColor = styleEqual(unique(wkndrndtable$Channel), 
                                                       colschann),fontWeight = 'bold') %>%
-  formatStyle('FeeType', backgroundColor = styleEqual(unique(wkndunittable$FeeType), 
+  formatStyle('FeeType', backgroundColor = styleEqual(unique(wkndrndtable$FeeType), 
                                                       colsfee),fontWeight = 'bold')
 
 # Create DT Table for Weekend Revenue
-wkndrevtableDT <- datatable(wkndrevtable, caption = htmltools::tags$caption(paste(totaldf$client, totaldf$Year,'-', 'account:', SQLData$account, 'Table: Weekend Revenue')), filter = 'top',
+wkndrevtableDT <- datatable(wkndrevtable, caption = htmltools::tags$caption(paste(totaldf$Course, totaldf$Year,'-', 'Facility:', SQLData$Facility, 'Table: Weekend Revenue')), filter = 'top',
                             extensions = 'Buttons', options = list(
                               dom = 'Bfrtip',
-                              buttons = list('copy',list(extend='excel',filename=paste(client,year,'Table: Weekend Revenue',Sys.Date()))), pageLength=nrow(wkndrevtable)
+                              buttons = list('copy',list(extend='excel',filename=paste(course,year,'Table: Weekend Revenue',Sys.Date()))), pageLength=nrow(wkndrevtable)
                             )) %>%
   formatStyle('Channel', backgroundColor = styleEqual(unique(wkndrevtable$Channel), colschann)
               ,fontWeight = 'bold') %>%
@@ -677,24 +703,26 @@ wkndrevtableDT <- datatable(wkndrevtable, caption = htmltools::tags$caption(past
 
 
 #### ENTER VALUES FOR GGIRAPH GRAPHS ####
-# CFTD.total.units.graph <- ggplot(weekdaydf, aes(x=MonthName, y=Total.Fees, group=FeeType, color=FeeType))
+# CFTD.total.rounds.graph <- ggplot(weekdaydf, aes(x=MonthName, y=Total.Fees, group=FeeType, color=FeeType))
 # CFTD.total.revenue.graph <-ggplot(weekdaydf, aes(x=MonthName, y=Total.Fees, group=FeeType, color=FeeType))
-# CFTD.weekday.units.graph <- ggplot(weekdaydf, aes(x=MonthName, y=Total.Fees, group=FeeType, color=FeeType))
+# CFTD.weekday.rounds.graph <- ggplot(weekdaydf, aes(x=MonthName, y=Total.Fees, group=FeeType, color=FeeType))
 # CFTD.weekday.revenue.graph <- ggplot(weekdaydf, aes(x=MonthName, y=Total.Fees, group=FeeType, color=FeeType))
-# CFTD.weekend.units.graph <- ggplot(weekdaydf, aes(x=MonthName, y=Total.Fees, group=FeeType, color=FeeType))
+# CFTD.weekend.rounds.graph <- ggplot(weekdaydf, aes(x=MonthName, y=Total.Fees, group=FeeType, color=FeeType))
 # CFTD.weekend.revenue.graph <- ggplot(weekdaydf, aes(x=MonthName, y=Total.Fees, group=FeeType, color=FeeType))
 
 ################################################# vv BLOCK OUT Below UNTIL FINISHED vv #################################################
 #### FULL WORKBOOK DOWNLOAD ####
 ## change working directory to save image files ##
-setwd("/folder/projectimg/")
+setwd("/srv/wd/Comp Assessment/Downloads/")
+#setwd("w:/Comp Assessment/Downloads/")
 
 ####CREATE WB ####
+#BkAdvWB <- XLConnect::loadWorkbook(paste0("/srv/wd/Comp Assessment/Downloads/",direc,"BookedAdvance.xlsx"), create=TRUE)
 CFTBWB <- createWorkbook(type="xlsx")
 
 #### Create png image immediatly before dev.off ####
 
-png(filename = "totalcftb.unit.png", width=900, height=600)
+png(filename = "totalcftb.rnd.png", width=900, height=600)
 print(krototal2) #total hours before tee time count graph
 dev.off()
 
@@ -702,7 +730,7 @@ png(filename = "totalcftb.rev.png", width=900, height=600)
 print(krevtotal2) #total hours before tee time density graph
 dev.off()
 
-png(filename = "wkdycftb.unit.png", width=900, height=600)
+png(filename = "wkdycftb.rnd.png", width=900, height=600)
 print(kroweekday2) #weekday hours before tee time count graph
 dev.off()
 
@@ -710,7 +738,7 @@ png(filename = "wkdycftb.rev.png", width=900, height=600)
 print(krevweekday2) #weekday hours before tee time density graph
 dev.off()
 
-png(filename = "wkndcftb.unit.png", width=900, height=600)
+png(filename = "wkndcftb.rnd.png", width=900, height=600)
 print(kroweekend2) #weekend hours before tee time count graph
 dev.off()
 
@@ -721,9 +749,9 @@ dev.off()
 #create a CellStyle that goes into CFTBWB
 cstylecols <- CellStyle(CFTBWB) + Font(CFTBWB, isBold=TRUE) + Border(color="black") #+ Alignment(wrapText = TRUE)
 
-TotalunitChnFee <- paste0(year," Total: units - By Channel and Fee")
-WkdyunitChnFee <- paste0(year," Weekday: units - By Channel and Fee")
-WkndunitChnFee <- paste0(year," Weekend: units - By Channel and Fee")
+TotalRndChnFee <- paste0(year," Total: Rounds - By Channel and Fee")
+WkdyRndChnFee <- paste0(year," Weekday: Rounds - By Channel and Fee")
+WkndRndChnFee <- paste0(year," Weekend: Rounds - By Channel and Fee")
 
 TotalRevChnFee <- paste0(year," Total: Revenue - By Channel and Fee")
 WkdyRevChnFee <- paste0(year," Weekday: Revenue - By Channel and Fee")
@@ -742,9 +770,9 @@ sheet1 <- createSheet(CFTBWB, sheetName = Sheetname1)
 rows1 <- createRow(sheet1, 1:80) #creates 120 rows
 cells1 <- createCell(rows1, colIndex = 1:60) #creates 43 columns & adds them to rows
 
-# 'year' Total: units - By Channel and Fee
+# 'year' Total: Rounds - By Channel and Fee
 cell <- cells1[[31,1]]
-setCellValue(cell, TotalunitChnFee)
+setCellValue(cell, TotalRndChnFee)
 setCellStyle(cell, cstylecols)
 
 # 'year' Total: Revenue - By Channel and Fee
@@ -753,11 +781,11 @@ setCellValue(cell, TotalRevChnFee)
 setCellStyle(cell, cstylecols)
 
 #### ADD TOTAL - Channel/Fee CHARTS ####
-addPicture(file=paste0("totalcftb.unit.png"), sheet1, startRow=1, startColumn=1)
+addPicture(file=paste0("totalcftb.rnd.png"), sheet1, startRow=1, startColumn=1)
 addPicture(file=paste0("totalcftb.rev.png"), sheet1, startRow=1, startColumn=20)
 
 #### ADD Round & Revenue DT Tables -Channel:Fee ####
-addDataFrame(totunittable, sheet1, startRow=32, startColumn=1, row.names=FALSE, colnamesStyle=cstylecols)
+addDataFrame(totrndtable, sheet1, startRow=32, startColumn=1, row.names=FALSE, colnamesStyle=cstylecols)
 addDataFrame(totrevtable, sheet1, startRow=32, startColumn=20, row.names=FALSE, colnamesStyle=cstylecols)
 
 #### SHEET 2 WEEKDAY - Channel-Fee Breakdown
@@ -773,9 +801,9 @@ sheet2 <- createSheet(CFTBWB, sheetName = Sheetname2)
 rows1 <- createRow(sheet2, 1:80) #creates 120 rows
 cells1 <- createCell(rows1, colIndex = 1:60) #creates 43 columns & adds them to rows
 
-# 'year' Total: units - By Channel and Fee
+# 'year' Total: Rounds - By Channel and Fee
 cell <- cells1[[31,1]]
-setCellValue(cell, WkdyunitChnFee)
+setCellValue(cell, WkdyRndChnFee)
 setCellStyle(cell, cstylecols)
 
 # 'year' Total: Revenue - By Channel and Fee
@@ -784,11 +812,11 @@ setCellValue(cell, WkdyRevChnFee)
 setCellStyle(cell, cstylecols)
 
 #### ADD TOTAL - Channel/Fee CHARTS ####
-addPicture(file=paste0("wkdycftb.unit.png"), sheet2, startRow=1, startColumn=1)
+addPicture(file=paste0("wkdycftb.rnd.png"), sheet2, startRow=1, startColumn=1)
 addPicture(file=paste0("wkdycftb.rev.png"), sheet2, startRow=1, startColumn=20)
 
 #### ADD Round & Revenue DT Tables -Channel:Fee ####
-addDataFrame(wkdyunittable, sheet2, startRow=32, startColumn=1, row.names=FALSE, colnamesStyle=cstylecols)
+addDataFrame(wkdyrndtable, sheet2, startRow=32, startColumn=1, row.names=FALSE, colnamesStyle=cstylecols)
 addDataFrame(wkdyrevtable, sheet2, startRow=32, startColumn=20, row.names=FALSE, colnamesStyle=cstylecols)
 
 #### SHEET 3 WEEKEND - Channel-Fee Breakdown
@@ -804,9 +832,9 @@ sheet3 <- createSheet(CFTBWB, sheetName = Sheetname3)
 rows1 <- createRow(sheet3, 1:80) #creates 120 rows
 cells1 <- createCell(rows1, colIndex = 1:60) #creates 43 columns & adds them to rows
 
-# 'year' Total: units - By Channel and Fee
+# 'year' Total: Rounds - By Channel and Fee
 cell <- cells1[[31,1]]
-setCellValue(cell, WkndunitChnFee)
+setCellValue(cell, WkndRndChnFee)
 setCellStyle(cell, cstylecols)
 
 # 'year' Total: Revenue - By Channel and Fee
@@ -815,17 +843,30 @@ setCellValue(cell, WkndRevChnFee)
 setCellStyle(cell, cstylecols)
 
 #### ADD TOTAL - Channel/Fee CHARTS ####
-addPicture(file=paste0("wkndcftb.unit.png"), sheet3, startRow=1, startColumn=1)
+addPicture(file=paste0("wkndcftb.rnd.png"), sheet3, startRow=1, startColumn=1)
 addPicture(file=paste0("wkndcftb.rev.png"), sheet3, startRow=1, startColumn=20)
 
 #### ADD Round & Revenue DT Tables -Channel:Fee ####
-addDataFrame(wkndunittable, sheet3, startRow=32, startColumn=1, row.names=FALSE, colnamesStyle=cstylecols)
+addDataFrame(wkndrndtable, sheet3, startRow=32, startColumn=1, row.names=FALSE, colnamesStyle=cstylecols)
 addDataFrame(wkndrevtable, sheet3, startRow=32, startColumn=20, row.names=FALSE, colnamesStyle=cstylecols)
 
 
 
 #### SAVE CFTBWB WORKBOOK ####
 
-saveWorkbook(CFTBWB)
+#w:/BetaGerhard/
+#saveWorkbook(CFTBWB,paste0("w:/BetaGerhard/",course," ", Sys.Date(), " Channel Fee Breakdown.xlsx")) #***TEST SAVE***
+## doesnt work --- saveWorkbook(CFTBWB,paste0("/srv/wd/BetaGerhard/",course," ", Sys.Date(), " Channel Fee Breakdown.xlsx"))
+saveWorkbook(CFTBWB,paste0("/srv/wd/Comp Assessment/Downloads/",direc,"Channel Fee Breakdown.xlsx"))
 
-} ## ends function that could be called in R Shiny app
+
+################################################ ^^ BLOCK OUT ABOVE UNTIL FINISHED ^^ ##################################################
+
+
+### END Tables&Graphs
+return(list("CFTDserv" = CFTD.total.rounds.graph, CFTD.total.revenue.graph, 
+            CFTD.weekday.rounds.graph, CFTD.weekday.revenue.graph, 
+            CFTD.weekend.rounds.graph, CFTD.weekend.revenue.graph, 
+            totrndtableDT, totrevtableDT, wkdyrndtableDT, wkdyrevtableDT,
+            wkndrndtableDT, wkndrevtableDT, ""))
+}
